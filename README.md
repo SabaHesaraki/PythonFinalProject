@@ -72,7 +72,8 @@ This project was built as a final Python project using:
 The app starts with a simple login screen.
 
 <p align="center">
-  <img src="docs/screenshots/01-login.png" alt="Login Window" width="800">
+  <img src="https://github.com/user-attachments/assets/f86c69d2-1fe2-4554-9028-06b8f390c16b" alt="Login Window" width="300"/>
+
 </p>
 
 ---
@@ -86,7 +87,8 @@ The main form is divided into sections:
 - Notes
 
 <p align="center">
-  <img src="docs/screenshots/02-main-form.png" alt="Main Form" width="800">
+  <img src="https://github.com/user-attachments/assets/8c88d3ad-72b2-4004-862e-b4e51e83ac6f" alt="Main Form" width="600"/>
+
 </p>
 
 ---
@@ -95,7 +97,8 @@ The main form is divided into sections:
 Invalid or empty fields are shown in **red**.
 
 <p align="center">
-  <img src="docs/screenshots/03-validation.png" alt="Validation Errors" width="800">
+  <img src="https://github.com/user-attachments/assets/4082f838-12b9-4f98-8d69-1164ef1491a6" alt="Validation Errors" width="600"/>
+
 </p>
 
 ---
@@ -104,7 +107,7 @@ Invalid or empty fields are shown in **red**.
 The File menu lets you choose the output CSV file or quit the app.
 
 <p align="center">
-  <img src="docs/screenshots/04-file-menu.png" alt="File Menu" width="800">
+ 
 </p>
 
 ---
@@ -113,7 +116,7 @@ The File menu lets you choose the output CSV file or quit the app.
 The Options menu includes settings such as autofill date and autofill sheet data.
 
 <p align="center">
-  <img src="docs/screenshots/05-options-menu.png" alt="Options Menu" width="800">
+
 </p>
 
 ---
