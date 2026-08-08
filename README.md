@@ -132,13 +132,39 @@ After validation passes, the record is saved to CSV.
 ---
 
 ### 🛠️ Project Progress
-This screenshot shows the development progress of the project.
 
-<p align="center">
-  <img src="docs/screenshots/07-project-progress.png" alt="Project Progress" width="800">
-</p>
+## 📈 Project Progress
 
----
+This project is currently in progress.
+
+### Completed
+- Tkinter GUI
+- MVC structure
+- Login dialog
+- Data entry form
+- Input validation
+- Red error messages
+- CSV saving
+- Settings support
+- Menu system
+
+### Planned
+- Database support
+- More validation improvements
+- Better UI polish
+- Extra features and reporting
+
+### Progress Chart
+```text
+GUI & Layout      ████████████████████ 100%
+Validation        ████████████████████ 100%
+CSV Storage       ████████████████████ 100%
+Login System      ████████████████████ 100%
+Settings          ████████████████████ 100%
+Database          ░░░░░░░░░░░░░░░░░░░░ 0%
+Regex/Advanced Validation ░░░░░░░░░░░░░░░░░░░░ 0%
+Reports           ░░░░░░░░░░░░░░░░░░░░ 0%
+
 
 ## 🧩 Features
 
