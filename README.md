@@ -3,7 +3,7 @@
 # 🌱 Saba Data Entry Application
 
 <p align="center">
-  <img src="docs/screenshots/01-login.png" alt="Login Screen" width="850">
+  <img src="" alt="" width="850">
 </p>
 
 <p align="center">
@@ -125,7 +125,8 @@ The Options menu includes settings such as autofill date and autofill sheet data
 After validation passes, the record is saved to CSV.
 
 <p align="center">
-  <img src="docs/screenshots/06-save-record.png" alt="Save Record" width="800">
+  <img  src="https://github.com/user-attachments/assets/e78935a2-169f-4012-abcf-ceeeca764531" alt="Save Record" width="800"/>
+
 </p>
 
 ---
