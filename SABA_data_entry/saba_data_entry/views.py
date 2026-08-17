@@ -22,7 +22,6 @@ class DataRecordForm(tk.Frame):
         self.create_plant_section(fields)
         self.create_notes_section(fields)
 
-        # Fill default values
         self.reset()
 
     # ---------------------------------------------------------
@@ -488,7 +487,7 @@ class LoginDialog(Dialog):
        super().__init__(parent , title=title)
 
     def body(self,frame):
-        ttk.Label(frame,text="Loin to Saba's App").grid(row=0)
+        ttk.Label(frame,text="Login to Saba's App").grid(row=0)
 
         if self._error.get():
             ttk.Label(frame,textvariable=self._error).grid(row=1)

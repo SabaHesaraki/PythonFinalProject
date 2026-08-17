@@ -4,7 +4,7 @@ from datetime import datetime
 
 from . import models as m
 from . import views as v
-
+from .mainmenu import MainMenu
 
 class Application(tk.Tk):
     """Application root window."""
@@ -27,12 +27,22 @@ class Application(tk.Tk):
             "file->quit": self.quit
         }
 
-        menu = v.MainMenu(
-            self,
-            self.settings,
-            self.callbacks
+        self.settings={
+            'autofill date':tk.BooleanVar(),
+            'autofill sheet data':tk.BooleanVar(),
+        }
+
+        menu = MainMenu(
+            self, self.settings
         )
         self.config(menu=menu)
+
+        event_callbacks={
+            '<<FileSelect>>':self.on_file_select,
+            '<<FileQuit>>':lambda _:self.quit(),
+        }
+        for sequence , callback in event_callbacks.items():
+            self.bind(sequence, callback)
 
         self.recordform = v.DataRecordForm(
             self,

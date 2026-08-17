@@ -1,6 +1,7 @@
 import csv
 import os
 import json
+from pathlib import Path
 from .constants import FiledTypes as FT
 
 class CSVModel:
@@ -10,7 +11,7 @@ class CSVModel:
         "Date": {'req': True, 'type': FT.iso_date_string},
         "Time": {'req': True, 'type': FT.string_list,
                  'values': ['8:00', '12:00', '16:00', '20:00']},
-        "Technician": {'req': True, 'type':  FT.string},
+        "Technician": {'req': True, 'type': FT.string},
         "Lab": {'req': True, 'type': FT.string_list,
                 'values': ['A', 'B', 'C', 'D', 'E']},
         "Plot": {'req': True, 'type': FT.string_list,
@@ -39,19 +40,53 @@ class CSVModel:
     }
 
     def __init__(self, filename):
+        self.file = Path(filename)
 
-        self.filename = filename
-
-    def save_record(self, data):
+    def save_record(self, data, rownum=None):
         """Save a dict of data to the CSV file"""
-
-        newfile = not os.path.exists(self.filename)
-
-        with open(self.filename, 'a') as fh:
-            csvwriter = csv.DictWriter(fh, fieldnames=self.fields.keys())
-            if newfile:
+        if rownum is None:
+            newfile = not self.file.exists()
+            with open(self.file, 'a', encoding='utf-8', newline='') as fh:
+                csvwriter = csv.DictWriter(fh, fieldnames=self.fields.keys())
+                if newfile:
+                    csvwriter.writeheader()
+                csvwriter.writerow(data)
+        else:
+            records = self.get_all_records()
+            records[rownum] = data
+            with open(self.file, 'w', encoding='utf-8', newline='') as fh:
+                csvwriter = csv.DictWriter(fh, fieldnames=self.fields.keys())
                 csvwriter.writeheader()
-            csvwriter.writerow(data)
+                csvwriter.writerows(records)
+
+    def get_all_records(self):
+
+        if not self.file.exists():
+            return []
+        with open(self.file, 'r', encoding='utf-8') as fh:
+            csvreader = csv.DictReader(fh)
+            missing_fields = (
+                set(self.fields.keys()) - set(csvreader.fieldnames)
+            )
+            if len(missing_fields) > 0:
+                fields_string = ", ".join(missing_fields)
+                raise Exception(
+                    f"File is missing fields: {fields_string}"
+                )
+            records = list(csvreader)
+            trues = ('true', 'yes', '1')
+            bool_fields = [
+                key for key, meta
+                in self.fields.items()
+                if meta['type'] == FT.boolean
+            ]
+            for record in records:
+                for key in bool_fields:
+                    record[key] = record[key].lower() in trues
+        return records
+
+    def get_record(self, rownum):
+        return self.get_all_records()[rownum]
 
 
 class SettingsModel:
@@ -63,9 +98,7 @@ class SettingsModel:
     }
 
     def __init__(self, filename='saba_settings.json', path='~'):
-
         self.filepath = os.path.join(os.path.expanduser(path), filename)
-
         self.load()
 
     def set(self, key, value):
