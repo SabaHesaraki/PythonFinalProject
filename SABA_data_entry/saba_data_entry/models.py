@@ -1,131 +1,243 @@
+# models.py
 import csv
-import os
-import json
+from datetime import date
 from pathlib import Path
-from .constants import FiledTypes as FT
-
-class CSVModel:
-    """CSV file storage"""
-
-    fields = {
-        "Date": {'req': True, 'type': FT.iso_date_string},
-        "Time": {'req': True, 'type': FT.string_list,
-                 'values': ['8:00', '12:00', '16:00', '20:00']},
-        "Technician": {'req': True, 'type': FT.string},
-        "Lab": {'req': True, 'type': FT.string_list,
-                'values': ['A', 'B', 'C', 'D', 'E']},
-        "Plot": {'req': True, 'type': FT.string_list,
-                 'values': [str(x) for x in range(1, 21)]},
-        "Seed sample":  {'req': True, 'type': FT.string},
-        "Humidity": {'req': True, 'type': FT.decimal,
-                     'min': 0.5, 'max': 52.0, 'inc': .01},
-        "Light": {'req': True, 'type': FT.decimal,
-                  'min': 0, 'max': 100.0, 'inc': .01},
-        "Temperature": {'req': True, 'type': FT.decimal,
-                        'min': 4, 'max': 40, 'inc': .01},
-        "Equipment Fault": {'req': False, 'type': FT.boolean},
-        "Plants": {'req': True, 'type': FT.integer,
-                   'min': 0, 'max': 20},
-        "Blossoms": {'req': True, 'type': FT.integer,
-                     'min': 0, 'max': 1000},
-        "Fruit": {'req': True, 'type': FT.integer,
-                  'min': 0, 'max': 1000},
-        "Min Height": {'req': True, 'type': FT.decimal,
-                       'min': 0, 'max': 1000, 'inc': .01},
-        "Max Height": {'req': True, 'type': FT.decimal,
-                       'min': 0, 'max': 1000, 'inc': .01},
-        "Median Height": {'req': True, 'type': FT.decimal,
-                          'min': 0, 'max': 1000, 'inc': .01},
-        "Notes": {'req': False, 'type': FT.long_string}
-    }
-
-    def __init__(self, filename):
-        self.file = Path(filename)
-
-    def save_record(self, data, rownum=None):
-        """Save a dict of data to the CSV file"""
-        if rownum is None:
-            newfile = not self.file.exists()
-            with open(self.file, 'a', encoding='utf-8', newline='') as fh:
-                csvwriter = csv.DictWriter(fh, fieldnames=self.fields.keys())
-                if newfile:
-                    csvwriter.writeheader()
-                csvwriter.writerow(data)
-        else:
-            records = self.get_all_records()
-            records[rownum] = data
-            with open(self.file, 'w', encoding='utf-8', newline='') as fh:
-                csvwriter = csv.DictWriter(fh, fieldnames=self.fields.keys())
-                csvwriter.writeheader()
-                csvwriter.writerows(records)
-
-    def get_all_records(self):
-
-        if not self.file.exists():
-            return []
-        with open(self.file, 'r', encoding='utf-8') as fh:
-            csvreader = csv.DictReader(fh)
-            missing_fields = (
-                set(self.fields.keys()) - set(csvreader.fieldnames)
-            )
-            if len(missing_fields) > 0:
-                fields_string = ", ".join(missing_fields)
-                raise Exception(
-                    f"File is missing fields: {fields_string}"
-                )
-            records = list(csvreader)
-            trues = ('true', 'yes', '1')
-            bool_fields = [
-                key for key, meta
-                in self.fields.items()
-                if meta['type'] == FT.boolean
-            ]
-            for record in records:
-                for key in bool_fields:
-                    record[key] = record[key].lower() in trues
-        return records
-
-    def get_record(self, rownum):
-        return self.get_all_records()[rownum]
 
 
 class SettingsModel:
-    """A model for saving settings"""
+    """Settings model for storing and persisting application configurations."""
 
-    variables = {
-        'autofill date': {'type': 'bool', 'value': True},
-        'autofill sheet data': {'type': 'bool', 'value': True}
+    fields = {
+        "autofill date": {"type": "bool", "value": True},
+        "autofill sheet data": {"type": "bool", "value": True},
+        "font size": {"type": "int", "value": 9},
+        "font family": {"type": "str", "value": ""},
+        "theme": {"type": "str", "value": "clam"},
     }
 
-    def __init__(self, filename='saba_settings.json', path='~'):
-        self.filepath = os.path.join(os.path.expanduser(path), filename)
-        self.load()
-
-    def set(self, key, value):
-        if (
-            key in self.variables and
-            type(value).__name__ == self.variables[key]['type']
-        ):
-            self.variables[key]['value'] = value
-        else:
-            raise ValueError("Bad key or wrong variable type")
-
-    def save(self, settings=None):
-        """Save the current settings to the file"""
-        json_string = json.dumps(self.variables)
-        with open(self.filepath, 'w') as fh:
-            fh.write(json_string)
+    def __init__(self, filename="settings.json"):
+        self.filename = filename
+        self.variables = {}
 
     def load(self):
-        """Load the settings from the file"""
+        try:
+            with open(self.filename, "r", encoding="utf-8") as file:
+                raw_values = eval(file.read())
+        except (FileNotFoundError, SyntaxError, NameError):
+            raw_values = {}
 
-        if not os.path.exists(self.filepath):
-            return
+        for key, info in self.fields.items():
+            val = raw_values.get(key, info["value"])
+            self.variables[key] = val
 
-        with open(self.filepath, 'r') as fh:
-            raw_values = json.loads(fh.read())
+        return self
 
-        for key in self.variables:
-            if key in raw_values and 'value' in raw_values[key]:
-                raw_value = raw_values[key]['value']
-                self.variables[key]['value'] = raw_value
+    def save(self):
+        with open(self.filename, "w", encoding="utf-8") as file:
+            file.write("{\n")
+            keys = list(self.fields.keys())
+            for index, key in enumerate(keys):
+                value = self.variables.get(key, self.fields[key]["value"])
+                if isinstance(value, str):
+                    rendered = f"'{value}'"
+                else:
+                    rendered = str(value)
+                comma = "," if index < len(keys) - 1 else ""
+                file.write(f"    '{key}': {rendered}{comma}\n")
+            file.write("}\n")
+
+    def get(self, key):
+        return self.variables.get(key, self.fields[key]["value"])
+
+    def set(self, key, value):
+        self.variables[key] = value
+
+
+class CSVModel:
+    """CSV file model for data entry records."""
+
+    fieldnames = [
+        "Date",
+        "Time",
+        "Technician",
+        "Lab",
+        "Plot",
+        "Seed sample",
+        "Humidity",
+        "Light",
+        "Temperature",
+        "Equipment Fault",
+        "Plants",
+        "Blossoms",
+        "Fruit",
+        "Min Height",
+        "Max Height",
+        "Median Height",
+        "Notes",
+    ]
+
+    def __init__(self, filename):
+        self.filename = filename
+        self.records = []
+        self.load()
+
+    def load(self):
+        """Load CSV records."""
+        file_path = Path(self.filename)
+        self.records = []
+
+        print("Running CSVModel.load from:", __file__)
+        print("Reading CSV file:", file_path.resolve())
+
+        if not file_path.is_file():
+            raise FileNotFoundError(
+                f"CSV file does not exist:\n{file_path.resolve()}"
+            )
+
+        with file_path.open(
+                mode="r",
+                encoding="utf-8-sig",
+                newline="",
+        ) as csv_file:
+            sample = csv_file.read(8192)
+            csv_file.seek(0)
+
+            print("CSV sample:", repr(sample[:300]))
+
+            if not sample.strip():
+                raise ValueError(
+                    f"CSV file is empty:\n{file_path.resolve()}"
+                )
+
+            try:
+                dialect = csv.Sniffer().sniff(
+                    sample,
+                    delimiters=",;\t|",
+                )
+            except csv.Error:
+                dialect = csv.excel
+
+            reader = csv.DictReader(
+                csv_file,
+                dialect=dialect,
+            )
+
+            print("Detected delimiter:", repr(dialect.delimiter))
+            print("Detected headers:", reader.fieldnames)
+
+            if reader.fieldnames is None:
+                raise ValueError(
+                    f"CSV file has no header:\n{file_path.resolve()}"
+                )
+
+            expected_names = {
+                field.strip().casefold(): field
+                for field in self.fieldnames
+            }
+
+            header_mapping = {}
+
+            for original_name in reader.fieldnames:
+                if original_name is None:
+                    continue
+
+                cleaned_name = original_name.strip()
+                canonical_name = expected_names.get(
+                    cleaned_name.casefold()
+                )
+
+                if canonical_name:
+                    header_mapping[original_name] = canonical_name
+
+            rows_seen = 0
+
+            for raw_row in reader:
+                print("Raw CSV row:", raw_row)
+
+                values = [
+                    str(value).strip()
+                    for key, value in raw_row.items()
+                    if key is not None and value is not None
+                ]
+
+                extra_values = raw_row.get(None, [])
+
+                if isinstance(extra_values, str):
+                    extra_values = [extra_values]
+
+                extra_values = [
+                    str(value).strip()
+                    for value in extra_values
+                    if value is not None and str(value).strip()
+                ]
+
+                if not any(values) and not extra_values:
+                    continue
+
+                rows_seen += 1
+
+                record = {
+                    field: ""
+                    for field in self.fieldnames
+                }
+
+                for original_name, value in raw_row.items():
+                    if original_name is None:
+                        continue
+
+                    canonical_name = header_mapping.get(original_name)
+
+                    if canonical_name is not None:
+                        record[canonical_name] = (
+                            str(value).strip()
+                            if value is not None
+                            else ""
+                        )
+
+                if extra_values:
+                    extra_text = " | ".join(extra_values)
+                    existing_notes = record["Notes"]
+
+                    record["Notes"] = (
+                        f"{existing_notes} | {extra_text}"
+                        if existing_notes
+                        else extra_text
+                    )
+
+                self.records.append(record)
+
+            print(
+                f"CSV parser finished: "
+                f"rows_seen={rows_seen}, "
+                f"records={len(self.records)}"
+            )
+
+    def save(self, filename=None):
+        if filename is not None:
+            self.filename = filename
+
+        if not self.filename:
+            raise ValueError("No CSV filename specified.")
+
+        with open(self.filename, "w", encoding="utf-8", newline="") as file:
+            writer = csv.DictWriter(file, fieldnames=self.fields)
+            writer.writeheader()
+            writer.writerows(self.records)
+
+    def add_record(self, record):
+        self.records.append(dict(record))
+
+    def update_record(self, row_number, record):
+        self.records[row_number] = dict(record)
+
+    def get_record(self, row_number):
+        return dict(self.records[row_number])
+
+    def get_records(self):
+        return [dict(record) for record in self.records]
+
+    def __len__(self):
+        return len(self.records)
+
+    def get_all_records(self):
+        return [record.copy() for record in self.records]

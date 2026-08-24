@@ -1,260 +1,376 @@
+from datetime import date
 import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
-from datetime import datetime
+from tkinter import filedialog, font, messagebox, ttk
+import login
+import mainmenu
+import models
 
-from . import models as m
-from . import views as v
-from .mainmenu import MainMenu
+import views
+
 
 class Application(tk.Tk):
-    """Application root window."""
+    """Main window of SABA Data Entry Application."""
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self):
+        super().__init__()
+        self.withdraw()
+        self.title("SABA Data Entry Application")
+        self.geometry("1000x620")
+        self.minsize(800, 500)
 
-        self.title("Saba Data Entry Application")
-        self.resizable(False, False)
+        self.settings_model = models.SettingsModel()
+        self.settings = {}
+        self._load_settings()
 
-        self.filename = tk.StringVar(
-            value=self._get_default_filename()
-        )
+        self.data_model = None
+        self.filename = tk.StringVar()
+        self.status = tk.StringVar(value="Select a CSV file to start.")
 
-        self.settings_model = m.SettingsModel()
-        self.load_settings()
+        self.create_style()
+        self._bind_setting_traces()
 
         self.callbacks = {
-            "file->select": self.on_file_select,
-            "file->quit": self.quit
+            "on_file_select": self.select_file,
+            "on_new_record": self.open_new_record,
+            "on_quit": self.destroy,
+            "on_about": self.show_about,
         }
 
-        self.settings={
-            'autofill date':tk.BooleanVar(),
-            'autofill sheet data':tk.BooleanVar(),
-        }
-
-        menu = MainMenu(
-            self, self.settings
-        )
-        self.config(menu=menu)
-
-        event_callbacks={
-            '<<FileSelect>>':self.on_file_select,
-            '<<FileQuit>>':lambda _:self.quit(),
-        }
-        for sequence , callback in event_callbacks.items():
-            self.bind(sequence, callback)
-
-        self.recordform = v.DataRecordForm(
-            self,
-            m.CSVModel.fields,
-            self.settings
-        )
-        self.recordform.grid(
-            row=1,
-            column=0,
-            padx=10,
-            pady=10
+        self.create_widgets()
+        self.login_window = login.LoginWindow(
+            parent=self, on_success=self.show_main_window
         )
 
-        self.savebutton = ttk.Button(
-            self,
-            text="Save",
-            command=self.on_save
+    def _load_settings(self):
+        """Load settings variables before installing any traces."""
+        for key, info in models.SettingsModel.fields.items():
+            val = self.settings_model.get(key)
+            if info["type"] == "int":
+                var = tk.IntVar(value=val)
+            elif info["type"] == "bool":
+                var = tk.BooleanVar(value=val)
+            else:
+                var = tk.StringVar(value=val)
+            self.settings[key] = var
+
+    def _bind_setting_traces(self):
+        """Persist settings and apply live font/theme changes."""
+        for key, var in self.settings.items():
+            var.trace_add(
+                "write",
+                lambda *_, k=key, v=var: self.settings_model.set(k, v.get()),
+            )
+
+        self._set_font()
+        self.settings["font size"].trace_add("write", self._set_font)
+        self.settings["font family"].trace_add("write", self._set_font)
+        self.settings["theme"].trace_add("write", self._set_theme)
+
+    def _set_font(self, *_):
+        """Set the application font dynamically across Tk standard named fonts."""
+        font_size = self.settings["font size"].get()
+        font_family = self.settings["font family"].get()
+
+        font_names = (
+            "TkDefaultFont",
+            "TkMenuFont",
+            "TkTextFont",
+            "TkFixedFont",
         )
-        self.savebutton.grid(
-            row=2,
-            column=0,
-            padx=10,
-            pady=(0, 5),
-            sticky="e"
-        )
 
-        self.status = tk.StringVar()
+        for font_name in font_names:
+            tk_font = font.nametofont(font_name)
+            if font_family:
+                tk_font.config(size=font_size, family=font_family)
+            else:
+                tk_font.config(size=font_size)
 
-        self.statusbar = ttk.Label(
-            self,
-            textvariable=self.status
-        )
-        self.statusbar.grid(
-            row=3,
-            column=0,
-            padx=10,
-            pady=(0, 10),
-            sticky="ew"
-        )
-
-        self.columnconfigure(0, weight=1)
-
-        self.records_saved = 0
-
-        self.withdraw()
-
-        if not self._show_login():
-            self.destroy()
-            return
-
-        self.update_idletasks()
-        self.center_window()
+    def show_main_window(self):
         self.deiconify()
+        self.lift()
+        self.show_status("Login successful. Welcome, Saba!", "success")
 
-    @staticmethod
-    def _get_default_filename():
-        date_string = datetime.today().strftime("%Y-%m-%d")
-        return f"saba_data_record_{date_string}.csv"
+    def _set_theme(self, *_):
+        """Apply the selected ttk theme, falling back to a safe available theme."""
+        requested = self.settings["theme"].get()
+        try:
+            self.style.theme_use(requested)
+            return
+        except tk.TclError:
+            themes = self.style.theme_names()
+            fallback = "clam" if "clam" in themes else (themes[0] if themes else None)
+            if fallback is None:
+                return
+            self.style.theme_use(fallback)
+            if requested != fallback:
+                # Keep the model/JSON valid without recursively applying the theme.
+                self.settings["theme"].set(fallback)
 
-    def center_window(self):
-        self.update_idletasks()
+    def create_style(self):
+        """Create the ttk style and apply the configured theme."""
+        self.style = ttk.Style(self)
+        self._set_theme()
+        style = self.style
 
-        width = self.winfo_width()
-        height = self.winfo_height()
+        self.configure(background="#FFF7FB")
 
-        screen_width = self.winfo_screenwidth()
-        screen_height = self.winfo_screenheight()
+        style.configure("TFrame", background="#FFF7FB")
 
-        x = (screen_width - width) // 2
-        y = (screen_height - height) // 2
+        style.configure("TLabel", background="#FFF7FB", foreground="#5C4B57")
 
-        self.geometry(
-            f"{width}x{height}+{x}+{y}"
+        style.configure(
+            "Title.TLabel",
+            background="#FDEBF2",
+            foreground="#805C7A",
+            font=("Arial", 18, "bold"),
         )
 
-    def on_save(self):
-        errors = self.recordform.get_errors()
+        style.configure(
+            "TLabelframe",
+            background="#FFF7FB",
+            foreground="#805C7A",
+            bordercolor="#E8B4C8",
+        )
 
-        if errors:
-            fields = ", ".join(errors.keys())
+        style.configure(
+            "TLabelframe.Label",
+            background="#FFF7FB",
+            foreground="#805C7A",
+            font=("Arial", 10, "bold"),
+        )
 
-            detail = (
-                "The following fields have errors:\n\n"
-                + "\n".join(
-                    f"• {field}: {error}"
-                    for field, error in errors.items()
-                )
-            )
+        style.configure(
+            "TButton",
+            background="#D9C2E9",
+            foreground="#4E3B4A",
+            padding=(10, 6),
+        )
 
-            self.status.set(
-                f"Cannot save. Errors in: {fields}"
-            )
+        style.map("TButton", background=[("active", "#F5C6D6")])
 
-            messagebox.showerror(
-                title="Validation Error",
-                message="Cannot save record",
-                detail=detail,
-                parent=self
-            )
+        style.configure(
+            "Treeview",
+            background="#FFFFFF",
+            fieldbackground="#FFFFFF",
+            foreground="#4E3B4A",
+            rowheight=30,
+        )
 
-            return False
+        style.configure(
+            "Treeview.Heading",
+            background="#E9D5F5",
+            foreground="#5D4663",
+            font=("Arial", 10, "bold"),
+        )
 
-        filename = self.filename.get().strip()
+        style.map(
+            "Treeview",
+            background=[("selected", "#BFD7EA")],
+            foreground=[("selected", "#3E4C59")],
+        )
+        style.configure(
+            "Status.TLabel",
+            background="#FDEBF2",
+            foreground="#76506F",
+            font=("Arial", 10),
+            padding=8,
+        )
+
+        style.configure(
+            "SuccessStatus.TLabel",
+            background="#DDF4E4",
+            foreground="#287A45",
+            font=("Arial", 10, "bold"),
+            padding=8,
+        )
+
+        style.configure(
+            "ErrorStatus.TLabel",
+            background="#FCE2E2",
+            foreground="#B23A3A",
+            font=("Arial", 10, "bold"),
+            padding=8,
+        )
+
+    def create_widgets(self):
+        """Build main page."""
+        menu_bar = mainmenu.MainMenu(self, self.settings, self.callbacks)
+        self.config(menu=menu_bar)
+
+        main_frame = ttk.Frame(self, padding=14)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+
+        main_frame.columnconfigure(0, weight=1)
+        main_frame.rowconfigure(2, weight=1)
+
+        # Header
+        header = tk.Frame(main_frame, background="#FDEBF2", height=85)
+        header.grid(row=0, column=0, sticky="ew", pady=(0, 14))
+        header.grid_propagate(False)
+
+        title = ttk.Label(
+            header, text="SABA Data Entry Application", style="Title.TLabel"
+        )
+        title.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+
+        # CSV selection
+        file_frame = ttk.LabelFrame(main_frame, text="CSV File", padding=10)
+        file_frame.grid(row=1, column=0, sticky="ew", pady=(0, 14))
+        file_frame.columnconfigure(0, weight=1)
+
+        self.filename_entry = ttk.Entry(
+            file_frame, textvariable=self.filename, state="readonly"
+        )
+        self.filename_entry.grid(row=0, column=0, sticky="ew", padx=(0, 10))
+
+        select_button = ttk.Button(
+            file_frame, text="Select CSV File", command=self.select_file
+        )
+        select_button.grid(row=0, column=1)
+
+        # Records table
+        self.record_list = views.RecordList(
+            main_frame, on_select=self.open_existing_record
+        )
+        self.record_list.grid(row=2, column=0, sticky="nsew")
+
+        # Status bar
+        self.status_label = ttk.Label(
+            main_frame,
+            textvariable=self.status,
+            style="Status.TLabel",
+            anchor=tk.W,
+            relief=tk.SUNKEN,
+        )
+        self.status_label.grid(row=3, column=0, sticky="ew", pady=(14, 0))
+
+    def show_status(self, message, status_type="normal"):
+        """Show a colored message at the bottom of the main window."""
+        style_name = "Status.TLabel"
+        if status_type == "success":
+            style_name = "SuccessStatus.TLabel"
+        elif status_type == "error":
+            style_name = "ErrorStatus.TLabel"
+
+        self.status.set(message)
+        self.status_label.configure(style=style_name)
+
+    def get_empty_record(self):
+        """Create a new empty record with today's Gregorian date."""
+        record = {field: "" for field in models.CSVModel.fieldnames}
+        record["Date"] = date.today().isoformat()
+        record["Humidity"] = "0.0"
+        record["Light"] = "0.0"
+        record["Temperature"] = "0.0"
+        record["Plants"] = "0"
+        record["Blossoms"] = "0"
+        record["Fruit"] = "0"
+        record["Min Height"] = "0.0"
+        record["Max Height"] = "0.0"
+        record["Median Height"] = "0.0"
+        record["Equipment Fault"] = "No"
+        return record
+
+    def select_file(self):
+        """Choose a CSV file."""
+        filename = filedialog.askopenfilename(
+            title="Select CSV File",
+            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
+        )
 
         if not filename:
-            messagebox.showerror(
-                title="File Error",
-                message="Please select a CSV file.",
-                parent=self
-            )
-            return False
+            return
 
         try:
-            model = m.CSVModel(filename)
-            data = self.recordform.get()
-            model.save_record(data)
-
-        except OSError as error:
-            messagebox.showerror(
-                title="File Error",
-                message="The record could not be saved.",
-                detail=str(error),
-                parent=self
-            )
-            return False
-
-        self.records_saved += 1
-
-        self.status.set(
-            f"{self.records_saved} records saved this session"
-        )
-
-        self.recordform.reset()
-        return True
-
-    def on_file_select(self):
-        filename = filedialog.asksaveasfilename(
-            parent=self,
-            title="Select the target file for saving records",
-            defaultextension=".csv",
-            filetypes=[
-                ("Comma-Separated Values", "*.csv *.CSV"),
-                ("All Files", "*.*")
-            ]
-        )
-
-        if filename:
+            self.data_model = models.CSVModel(filename)
             self.filename.set(filename)
-            self.status.set(
-                f"Target file: {filename}"
+            self.record_list.clear_row_colors()
+            records = self.refresh_table()
+            print(f"Loaded CSV: {filename} ({len(records)} records)")
+            if records:
+                self.show_status("CSV file loaded. Click a row to edit it.", "success")
+            else:
+                self.show_status("CSV file loaded, but no records were found.")
+        except Exception as error:
+            messagebox.showerror(
+                "File Error", f"Could not open the file.\n\n{error}"
             )
 
-    def save_settings(self, *args):
-        for key, variable in self.settings.items():
-            self.settings_model.set(
-                key,
-                variable.get()
+    def open_new_record(self):
+        """Open the complete form for creating a new record."""
+        if self.data_model is None:
+            messagebox.showwarning("No File", "Please select a CSV file first.")
+            self.show_status(
+                "Select a CSV file before creating a record.", "error"
             )
+            return
 
-        self.settings_model.save()
-
-    def load_settings(self):
-        variable_types = {
-            "bool": tk.BooleanVar,
-            "str": tk.StringVar,
-            "int": tk.IntVar,
-            "float": tk.DoubleVar
-        }
-
-        self.settings = {}
-
-        for key, data in self.settings_model.variables.items():
-            variable_type = variable_types.get(
-                data.get("type"),
-                tk.StringVar
-            )
-
-            self.settings[key] = variable_type(
-                value=data.get("value")
-            )
-
-        for variable in self.settings.values():
-            variable.trace_add(
-                "write",
-                self.save_settings
-            )
-
-    @staticmethod
-    def _simple_login(username, password):
-        return (
-            username == "saba"
-            and password == "Flowers"
+        empty_record = self.get_empty_record()
+        views.RecordEditor(
+            parent=self,
+            record=empty_record,
+            row_number=None,
+            on_save=self.save_record,
         )
 
-    def _show_login(self):
-        title = "Login to Saba Data Entry Application"
-        error = ""
+    def open_existing_record(self, row_number):
+        """Open the selected record in the complete editor."""
+        if self.data_model is None:
+            return
 
-        while True:
-            login = v.LoginDialog(
-                self,
-                title,
-                error
+        try:
+            record = self.data_model.get_record(row_number)
+            views.RecordEditor(
+                parent=self,
+                record=record,
+                row_number=row_number,
+                on_save=self.save_record,
+            )
+        except Exception as error:
+            messagebox.showerror(
+                "Record Error", f"Could not open the record.\n\n{error}"
             )
 
-            if not login.result:
-                return False
+    def save_record(self, record, row_number):
+        """Save a new record or update an existing record."""
+        try:
+            if row_number is None:
+                self.data_model.add_record(record)
+                new_row_number = len(self.data_model.get_all_records()) - 1
+                self.record_list.mark_inserted(new_row_number)
+                self.show_status(
+                    "✓ New record saved successfully.", "success"
+                )
+            else:
+                self.data_model.update_record(row_number, record)
+                self.record_list.mark_updated(row_number)
+                self.show_status(
+                    f"✓ Record {row_number} updated successfully.", "success"
+                )
+            self.refresh_table()
+        except Exception as error:
+            messagebox.showerror(
+                "Save Error", f"Could not save the record.\n\n{error}"
+            )
+            self.show_status("Could not save the record.", "error")
 
-            username, password = login.result
+    def refresh_table(self):
+        """Refresh the table with all records currently loaded."""
+        records = []
+        if self.data_model is not None:
+            records = self.data_model.get_all_records()
+        self.record_list.populate(records)
+        return records
 
-            if self._simple_login(username, password):
-                return True
+    def show_about(self):
+        """Show About message."""
+        messagebox.showinfo(
+            "About",
+            "SABA Data Entry Application\n\n"
+            "Click a row to open its complete form.",
+        )
 
-            error = "Login failed"
 
+if __name__ == "__main__":
+    app = Application()
+    app.mainloop()
