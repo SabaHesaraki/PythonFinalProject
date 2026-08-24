@@ -72,7 +72,7 @@ This project was built as a final Python project using:
 The app starts with a simple login screen.
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/f86c69d2-1fe2-4554-9028-06b8f390c16b" alt="Login Window" width="300"/>
+  <img src="https://github.com/user-attachments/assets/f3c55105-21a0-4831-a95e-7e9c3957bb13" " alt="Login Window" width="300"/>
 
 </p>
 
@@ -87,7 +87,8 @@ The main form is divided into sections:
 - Notes
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/8c88d3ad-72b2-4004-862e-b4e51e83ac6f" alt="Main Form" width="600"/>
+  <img src="https://github.com/user-attachments/assets/c4d942a2-7d46-4f46-aec0-650063552353" alt="Main Form" width="600"/>
+
 
 </p>
 
@@ -97,7 +98,7 @@ The main form is divided into sections:
 Invalid or empty fields are shown in **red**.
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/4082f838-12b9-4f98-8d69-1164ef1491a6" alt="Validation Errors" width="600"/>
+  <img src="https://github.com/user-attachments/assets/d1489fcc-bc45-4462-bd4c-48e08c46fe1a" " alt="Validation Errors" width="600"/>
 
 </p>
 
@@ -107,7 +108,8 @@ Invalid or empty fields are shown in **red**.
 The File menu lets you choose the output CSV file or quit the app.
 
 <p align="center">
- 
+   <img src="https://github.com/user-attachments/assets/510de0b9-7ef9-498a-9407-ce10bd3b6c75" alt="Validation Errors" width="600"/>
+
 </p>
 
 ---
