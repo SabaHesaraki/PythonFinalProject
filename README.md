@@ -20,7 +20,7 @@
 
 ---
 
-## 🚧 Project Status
+## Project Status
 
 # 🔥 THIS PROJECT IS STILL UNDER DEVELOPMENT 🔥
 
@@ -37,7 +37,7 @@ More improvements are still coming, including:
 
 ---
 
-## ✨ About the Project
+## About the Project
 
 **Saba Data Entry Application** is a desktop app made for structured data collection.
 
@@ -66,9 +66,9 @@ This project was built as a final Python project using:
 
 ---
 
-## 🖼️ Application Screenshots
+## Application Screenshots
 
-### 🔐 Login Window
+### Login Window
 The app starts with a simple login screen.
 
 <p align="center">
@@ -78,7 +78,7 @@ The app starts with a simple login screen.
 
 ---
 
-### 📝 Main Form
+### Main Form
 The main form is divided into sections:
 
 - Record Information
@@ -94,7 +94,7 @@ The main form is divided into sections:
 
 ---
 
-### ❌ Validation Errors
+### Validation Errors
 Invalid or empty fields are shown in **red**.
 
 <p align="center">
@@ -104,7 +104,7 @@ Invalid or empty fields are shown in **red**.
 
 ---
 
-### 📁 File Menu
+### File Menu
 The File menu lets you choose the output CSV file or quit the app.
 
 <p align="center">
@@ -114,7 +114,7 @@ The File menu lets you choose the output CSV file or quit the app.
 
 ---
 
-### ⚙️ Options Menu
+### Options Menu
 The Options menu includes settings such as autofill date and autofill sheet data.
 
 <p align="center">
@@ -123,7 +123,7 @@ The Options menu includes settings such as autofill date and autofill sheet data
 
 ---
 
-### 💾 Save Record
+### Save Record
 After validation passes, the record is saved to CSV.
 
 <p align="center">
@@ -133,9 +133,17 @@ After validation passes, the record is saved to CSV.
 
 ---
 
-### 🛠️ Project Progress
+ ## Phase 2: Migrating to PostgreSQL & Relational Schema
 
-## 📈 Project Progress
+  <p align="center">
+  <img src="https://github.com/user-attachments/assets/0e5571bc-663c-4aa4-ba7a-3fdc1bcb5a28" alt="Save Record" width="800"/>
+
+</p>
+
+
+### Project Progress
+
+## Project Progress
 
 This project is currently in progress.
 
@@ -168,7 +176,7 @@ Regex/Advanced Validation ░░░░░░░░░░░░░░░░░░
 Reports           ░░░░░░░░░░░░░░░░░░░░ 0%
 
 
-## 🧩 Features
+## Features
 
 ### ✅ User Login
 A login dialog appears before the main app opens.
@@ -202,7 +210,7 @@ Settings are stored and loaded through a JSON file.
 
 ---
 
-## 🏗️ MVC Structure
+## MVC Structure
 
 This project follows an MVC-style structure:
 ```text
