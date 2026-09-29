@@ -1,7 +1,6 @@
 {
-    "autofill date": true,
-    "autofill sheet data": true,
-    "font size": 15,
-    "font family": "MS Sans Serif",
-    "theme": "default"
+  "theme": "clam",
+  "font size": 9,
+  "font family": "Segoe UI",
+  "autofill sheet data": true
 }

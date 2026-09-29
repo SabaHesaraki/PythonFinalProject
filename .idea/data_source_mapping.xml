@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="DataSourcePerFileMappings">
+    <file url="file://$PROJECT_DIR$/SABA_data_entry/saba_data_entry/sql/create_db.sql" value="b5e5b1d5-4ab8-4220-97c2-9a9bb1bf73ef" />
+    <file url="file://$PROJECT_DIR$/SABA_data_entry/saba_data_entry/sql/populate_db.sql" value="b5e5b1d5-4ab8-4220-97c2-9a9bb1bf73ef" />
+  </component>
+</project>

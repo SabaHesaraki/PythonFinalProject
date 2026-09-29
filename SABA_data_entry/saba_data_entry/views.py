@@ -1,785 +1,305 @@
+from __future__ import annotations
+
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import messagebox, ttk
+from typing import Any, Callable
 
 
-class RecordList(ttk.Frame):
-    """Table for showing CSV records."""
+BG_PINK = "#FFF0F5"
+HEADER_PINK = "#F8D7E3"
+BTN_PINK = "#F3C5D8"
+BTN_HOVER = "#E8AFC6"
+ACCENT_PURPLE = "#8E44AD"
 
-    columns = (
-        "Date",
-        "Time",
-        "Technician",
-        "Lab",
-        "Plot"
+
+def setup_pastel_theme(root: tk.Tk) -> None:
+    style = ttk.Style(root)
+    if "clam" in style.theme_names():
+        style.theme_use("clam")
+
+    root.configure(bg=BG_PINK)
+
+    style.configure(".", background=BG_PINK, font=("Segoe UI", 9))
+    style.configure("TFrame", background=BG_PINK)
+    style.configure("TLabel", background=BG_PINK, foreground="#333333")
+
+    style.configure(
+        "TButton",
+        background=BTN_PINK,
+        foreground="#4A235A",
+        relief="flat",
+        padding=6,
+        font=("Segoe UI", 9, "bold"),
+    )
+    style.map(
+        "TButton",
+        background=[("active", BTN_HOVER), ("pressed", "#D99BB4")],
+        relief=[("pressed", "sunken"), ("!pressed", "flat")],
     )
 
-    def __init__(self, parent, on_select):
-        super().__init__(parent, padding=10)
-
-        self.on_select = on_select
-        self.inserted_rows = set()
-        self.updated_rows = set()
-
-        self.columnconfigure(0, weight=1)
-        self.rowconfigure(0, weight=1)
-
-        self.tree = ttk.Treeview(
-            self,
-            columns=self.columns,
-            selectmode="browse"
-        )
-
-        self.scrollbar = ttk.Scrollbar(
-            self,
-            orient=tk.VERTICAL,
-            command=self.tree.yview
-        )
-
-        self.tree.configure(
-            yscrollcommand=self.scrollbar.set
-        )
-
-        self.tree.heading("#0", text="Row")
-        self.tree.column(
-            "#0",
-            width=55,
-            anchor=tk.CENTER,
-            stretch=False
-        )
-
-        for column_name in self.columns:
-            self.tree.heading(
-                column_name,
-                text=column_name,
-                anchor=tk.CENTER
-            )
-
-            self.tree.column(
-                column_name,
-                width=120,
-                anchor=tk.CENTER
-            )
-
-        self.tree.column(
-            "Technician",
-            width=150
-        )
-
-
-        self.tree.tag_configure(
-            "inserted",
-            background="#CDEAC0",
-            foreground="#355834"
-        )
-
-        self.tree.tag_configure(
-            "updated",
-            background="#CDE7F0",
-            foreground="#365563"
-        )
-
-        self.tree.grid(
-            row=0,
-            column=0,
-            sticky="nsew"
-        )
-
-        self.scrollbar.grid(
-            row=0,
-            column=1,
-            sticky="ns"
-        )
-
-        self.tree.bind(
-            "<<TreeviewSelect>>",
-            self.open_selected_record
-        )
-
-    def populate(self, records):
-        """Refresh records in table."""
-
-        for item in self.tree.get_children():
-            self.tree.delete(item)
-
-        for row_number, record in enumerate(records):
-            values = (
-                record.get("Date", ""),
-                record.get("Time", ""),
-                record.get("Technician", ""),
-                record.get("Lab", ""),
-                record.get("Plot", "")
-            )
-
-            tags = ()
-
-            if row_number in self.inserted_rows:
-                tags = ("inserted",)
-
-            elif row_number in self.updated_rows:
-                tags = ("updated",)
-
-            self.tree.insert(
-                "",
-                tk.END,
-                iid=str(row_number),
-                text=str(row_number),
-                values=values,
-                tags=tags
-            )
-
-    def open_selected_record(self, event=None):
-        """Open clicked row."""
-
-        selected = self.tree.selection()
-
-        if not selected:
-            return
-
-        self.on_select(int(selected[0]))
-
-    def mark_inserted(self, row_number):
-        self.inserted_rows.add(int(row_number))
-
-    def mark_updated(self, row_number):
-        row_number = int(row_number)
-
-        self.inserted_rows.discard(row_number)
-        self.updated_rows.add(row_number)
-
-    def clear_row_colors(self):
-        self.inserted_rows.clear()
-        self.updated_rows.clear()
-
-
-class RecordEditor(tk.Toplevel):
-    """Complete data-entry form for one record."""
-
-    required_fields = {
-        "Date": "A value is required",
-        "Time": "A value is required",
-        "Lab": "A value is required",
-        "Plot": "A value is required",
-        "Humidity": "A value is required",
-        "Temperature": "A value is required",
-        "Plants": "A value is required",
-        "Fruit": "A value is required",
-        "Min Height": "A value is required",
-        "Max Height": "A value is required"
-    }
-
-    numeric_fields = (
-        "Humidity",
-        "Light",
-        "Temperature",
-        "Plants",
-        "Blossoms",
-        "Fruit",
-        "Min Height",
-        "Max Height",
-        "Median Height"
+    style.configure(
+        "Treeview",
+        background="#FFFFFF",
+        fieldbackground="#FFFFFF",
+        foreground="#333333",
+        rowheight=25,
+        bordercolor=HEADER_PINK,
     )
+    style.configure(
+        "Treeview.Heading",
+        background=HEADER_PINK,
+        foreground="#4A235A",
+        font=("Segoe UI", 9, "bold"),
+        relief="flat",
+    )
+    style.map("Treeview.Heading", background=[("active", BTN_PINK)])
+    style.map("Treeview", background=[("selected", "#E8C1D9")], foreground=[("selected", "#000000")])
 
-    def __init__(self, parent, record, row_number, on_save):
+
+class LoginDialog(tk.Toplevel):
+    def __init__(self, parent: tk.Tk, on_success: Callable[[dict[str, Any]], None]):
         super().__init__(parent)
-
-        self.row_number = row_number
-        self.on_save_callback = on_save
-
-        self.title("SABA Data Entry Application")
-        self.geometry("920x780")
-        self.minsize(780, 650)
-
-        self.configure(background="#FFF7FB")
-
-        self.variables = {}
-        self.error_labels = {}
-
-        self.create_variables(record)
-        self.create_widgets()
+        self.parent = parent
+        self.on_success = on_success
+        self.title("Connect to Database")
+        self.geometry("380x370")
+        self.resizable(False, False)
+        self.configure(bg=BG_PINK)
 
         self.transient(parent)
         self.grab_set()
 
-    def create_variables(self, record):
-        """Load record values into Tkinter variables."""
+        self._build_ui()
+        self.protocol("WM_DELETE_WINDOW", self.parent.destroy)
 
-        all_fields = [
-            "Date",
-            "Time",
-            "Technician",
-            "Lab",
-            "Plot",
-            "Seed sample",
-            "Humidity",
-            "Light",
-            "Temperature",
-            "Equipment Fault",
-            "Plants",
-            "Blossoms",
-            "Fruit",
-            "Min Height",
-            "Max Height",
-            "Median Height"
-        ]
-
-        for field in all_fields:
-            value = record.get(field, "")
-
-            if value is None:
-                value = ""
-
-            self.variables[field] = tk.StringVar(
-                value=str(value)
-            )
-
-        self.notes_value = str(record.get("Notes", ""))
-
-    def create_widgets(self):
-        """Create all sections of the form."""
-
-        self.main_frame = ttk.Frame(
+    def _build_ui(self) -> None:
+        title_lbl = ttk.Label(
             self,
-            padding=14
+            text="🌸 Database Login 🌸",
+            font=("Segoe UI", 12, "bold"),
+            foreground=ACCENT_PURPLE,
         )
+        title_lbl.pack(pady=(18, 12))
 
-        self.main_frame.pack(
-            fill=tk.BOTH,
-            expand=True
+        form = ttk.Frame(self, padding=(25, 5))
+        form.pack(fill=tk.BOTH, expand=True)
+
+        self.vars = {
+            "Host": tk.StringVar(value="localhost"),
+            "Port": tk.StringVar(value="5432"),
+            "Database": tk.StringVar(value="saba_data_entry"),
+            "User": tk.StringVar(value="postgres"),
+            "Password": tk.StringVar(value=""),
+        }
+
+        for i, (lbl_text, var) in enumerate(self.vars.items()):
+            ttk.Label(form, text=f"{lbl_text}:", width=12, anchor="w").grid(row=i, column=0, pady=5, sticky="w")
+            show_char = "*" if lbl_text == "Password" else ""
+            ent = ttk.Entry(form, textvariable=var, show=show_char)
+            ent.grid(row=i, column=1, pady=5, sticky="ew")
+
+        form.columnconfigure(1, weight=1)
+
+        btn_box = ttk.Frame(self, padding=15)
+        btn_box.pack(fill=tk.X)
+
+        connect_btn = ttk.Button(btn_box, text="Connect 💕", command=self._on_submit)
+        connect_btn.pack(side=tk.LEFT, expand=True, padx=5)
+
+        cancel_btn = ttk.Button(btn_box, text="Exit", command=self.parent.destroy)
+        cancel_btn.pack(side=tk.RIGHT, expand=True, padx=5)
+
+    def _on_submit(self) -> None:
+        params = {
+            "host": self.vars["Host"].get().strip(),
+            "port": int(self.vars["Port"].get().strip() or 5432),
+            "database": self.vars["Database"].get().strip(),
+            "user": self.vars["User"].get().strip(),
+            "password": self.vars["Password"].get(),
+        }
+        self.grab_release()
+        self.destroy()
+        self.on_success(params)
+
+
+class RecordList(ttk.Frame):
+    def __init__(self, parent, callbacks: dict[str, Callable] | None = None, *args, **kwargs):
+        super().__init__(parent, *args, **kwargs)
+        self.callbacks = callbacks or {}
+
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(0, weight=1)
+
+        self.columns = ("Date", "Time", "Lab", "Plot", "Seed Sample", "Humidity", "Light", "Temperature")
+        self.tree = ttk.Treeview(self, columns=self.columns, show="headings", selectmode="browse")
+
+        for col in self.columns:
+            self.tree.heading(col, text=col)
+            self.tree.column(col, width=95, anchor="center")
+
+        self.scrollbar = ttk.Scrollbar(self, orient=tk.VERTICAL, command=self.tree.yview)
+        self.tree.configure(yscrollcommand=self.scrollbar.set)
+
+        self.tree.grid(row=0, column=0, sticky="nsew", padx=(10, 0), pady=10)
+        self.scrollbar.grid(row=0, column=1, sticky="ns", padx=(0, 10), pady=10)
+
+        self.btn_frame = ttk.Frame(self)
+        self.btn_frame.grid(row=1, column=0, columnspan=2, sticky="ew", padx=10, pady=(0, 10))
+
+        self.add_btn = ttk.Button(self.btn_frame, text="✨ Add Record", command=self._on_add)
+        self.add_btn.pack(side=tk.LEFT, padx=5)
+
+        self.edit_btn = ttk.Button(self.btn_frame, text="✏️ Edit Record", command=self._on_edit)
+        self.edit_btn.pack(side=tk.LEFT, padx=5)
+
+        self.delete_btn = ttk.Button(self.btn_frame, text="🗑️ Delete Record", command=self._on_delete)
+        self.delete_btn.pack(side=tk.LEFT, padx=5)
+
+        self.tree.bind("<Double-1>", lambda event: self._on_edit())
+
+    def populate(self, records: list[dict[str, Any]]) -> None:
+        self.tree.delete(*self.tree.get_children())
+        for rec in records:
+            vals = [rec.get(col, "") for col in self.columns]
+            self.tree.insert("", tk.END, values=vals)
+
+    def get_selected_key(self) -> tuple[str, str, str, str] | None:
+        selected_item = self.tree.selection()
+        if not selected_item:
+            return None
+        values = self.tree.item(selected_item[0], "values")
+        if len(values) >= 4:
+            return (str(values[0]), str(values[1]), str(values[2]), str(values[3]))
+        return None
+
+    def _on_add(self) -> None:
+        if "on_add" in self.callbacks:
+            self.callbacks["on_add"]()
+
+    def _on_edit(self) -> None:
+        key = self.get_selected_key()
+        if not key:
+            messagebox.showwarning("Selection Required", "Please select a record from the list to edit.")
+            return
+        if "on_edit" in self.callbacks:
+            self.callbacks["on_edit"](key)
+
+    def _on_delete(self) -> None:
+        key = self.get_selected_key()
+        if not key:
+            messagebox.showwarning("Selection Required", "Please select a record from the list to delete.")
+            return
+        confirm = messagebox.askyesno(
+            "Confirm Delete",
+            f"Are you sure you want to delete this record?\n\nDate: {key[0]}\nTime: {key[1]}\nLab: {key[2]}\nPlot: {key[3]}",
         )
+        if confirm and "on_delete" in self.callbacks:
+            self.callbacks["on_delete"](key)
 
-        self.main_frame.columnconfigure(0, weight=1)
-        self.main_frame.rowconfigure(3, weight=1)
 
-        title = ttk.Label(
-            self.main_frame,
-            text="Saba Data Entry Application",
-            font=("Arial", 16, "bold")
-        )
-
-        title.grid(
-            row=0,
-            column=0,
-            pady=(0, 14)
-        )
-
-        self.create_record_info()
-        self.create_environment_data()
-        self.create_plant_data()
-        self.create_notes()
-        self.create_buttons()
-
-    def add_label(self, parent, text, row, column):
-        """Create a label above a field."""
-
-        label = ttk.Label(parent, text=text)
-
-        label.grid(
-            row=row,
-            column=column,
-            padx=6,
-            pady=(7, 2),
-            sticky="w"
-        )
-
-    def add_error_label(self, parent, field, row, column):
-        """Create an initially-empty validation message."""
-
-        error_label = tk.Label(
-            parent,
-            text="",
-            background="#FFF7FB",
-            foreground="#E74C3C",
-            font=("Arial", 9)
-        )
-
-        error_label.grid(
-            row=row,
-            column=column,
-            padx=6,
-            pady=(1, 4),
-            sticky="w"
-        )
-
-        self.error_labels[field] = error_label
-
-    def add_entry(self, parent, field, row, column):
-        """Create a regular Entry."""
-
-        entry = ttk.Entry(
-            parent,
-            textvariable=self.variables[field]
-        )
-
-        entry.grid(
-            row=row,
-            column=column,
-            padx=6,
-            sticky="ew"
-        )
-
-        return entry
-
-    def add_spinbox(
+class DataRecordForm(tk.Toplevel):
+    def __init__(
         self,
         parent,
-        field,
-        row,
-        column,
-        minimum,
-        maximum,
-        increment
+        fields_schema: dict[str, Any],
+        initial_data: dict[str, Any] | None = None,
+        rowkey: tuple[str, str, str, str] | None = None,
+        on_save: Callable[[dict[str, Any], tuple[str, str, str, str] | None], None] | None = None,
+        *args,
+        **kwargs,
     ):
-        """Create numeric Spinbox."""
-
-        spinbox = ttk.Spinbox(
-            parent,
-            from_=minimum,
-            to=maximum,
-            increment=increment,
-            textvariable=self.variables[field]
-        )
-
-        spinbox.grid(
-            row=row,
-            column=column,
-            padx=6,
-            sticky="ew"
-        )
-
-        return spinbox
-
-    def create_record_info(self):
-        """Create Record Information section."""
-
-        frame = ttk.LabelFrame(
-            self.main_frame,
-            text="Record Info",
-            padding=10
-        )
-
-        frame.grid(
-            row=1,
-            column=0,
-            sticky="ew",
-            pady=(0, 12)
-        )
-
-        for column in range(3):
-            frame.columnconfigure(column, weight=1)
-
-        # Row 1
-        self.add_label(frame, "Date", 0, 0)
-        self.add_label(frame, "Time", 0, 1)
-        self.add_label(frame, "Technician", 0, 2)
-
-        self.add_entry(frame, "Date", 1, 0)
-
-        # Time = Combobox
-        self.time_box = ttk.Combobox(
-            frame,
-            textvariable=self.variables["Time"],
-            values=[
-                "08:00",
-                "10:00",
-                "12:00",
-                "14:00",
-                "16:00",
-                "18:00",
-                "20:00"
-            ],
-            state="readonly"
-        )
-
-        self.time_box.grid(
-            row=1,
-            column=1,
-            padx=6,
-            sticky="ew"
-        )
-
-        self.add_entry(frame, "Technician", 1, 2)
-
-        self.add_error_label(frame, "Date", 2, 0)
-        self.add_error_label(frame, "Time", 2, 1)
-
-        # Row 2
-        self.add_label(frame, "Lab", 3, 0)
-        self.add_label(frame, "Plot", 3, 1)
-        self.add_label(frame, "Seed Sample", 3, 2)
-
-        # Lab = Combobox
-        self.lab_box = ttk.Combobox(
-            frame,
-            textvariable=self.variables["Lab"],
-            values=["A", "B", "C", "D", "E"],
-            state="readonly"
-        )
-
-        self.lab_box.grid(
-            row=4,
-            column=0,
-            padx=6,
-            sticky="ew"
-        )
-
-        # Plot = Combobox
-        self.plot_box = ttk.Combobox(
-            frame,
-            textvariable=self.variables["Plot"],
-            values=[
-                "1", "2", "3", "4", "5",
-                "6", "7", "8", "9", "10"
-            ],
-            state="readonly"
-        )
-
-        self.plot_box.grid(
-            row=4,
-            column=1,
-            padx=6,
-            sticky="ew"
-        )
-
-        self.add_entry(frame, "Seed sample", 4, 2)
-
-        self.add_error_label(frame, "Lab", 5, 0)
-        self.add_error_label(frame, "Plot", 5, 1)
-
-    def create_environment_data(self):
-        """Create Environment Data section."""
-
-        frame = ttk.LabelFrame(
-            self.main_frame,
-            text="Environment Data",
-            padding=10
-        )
-
-        frame.grid(
-            row=2,
-            column=0,
-            sticky="ew",
-            pady=(0, 12)
-        )
-
-        for column in range(3):
-            frame.columnconfigure(column, weight=1)
-
-        self.add_label(frame, "Humidity", 0, 0)
-        self.add_label(frame, "Light", 0, 1)
-        self.add_label(frame, "Temperature", 0, 2)
-
-        # Numeric fields = Spinbox
-        self.add_spinbox(
-            frame,
-            "Humidity",
-            1,
-            0,
-            minimum=0,
-            maximum=100,
-            increment=0.1
-        )
-
-        self.add_spinbox(
-            frame,
-            "Light",
-            1,
-            1,
-            minimum=0,
-            maximum=100000,
-            increment=0.1
-        )
-
-        self.add_spinbox(
-            frame,
-            "Temperature",
-            1,
-            2,
-            minimum=0,
-            maximum=100,
-            increment=0.1
-        )
-
-        self.add_error_label(frame, "Humidity", 2, 0)
-        self.add_error_label(frame, "Light", 2, 1)
-        self.add_error_label(frame, "Temperature", 2, 2)
-
-        self.fault_check = ttk.Checkbutton(
-            frame,
-            text="Equipment Fault",
-            variable=self.variables["Equipment Fault"],
-            onvalue="Yes",
-            offvalue="No"
-        )
-
-        self.fault_check.grid(
-            row=3,
-            column=0,
-            padx=6,
-            pady=(7, 2),
-            sticky="w"
-        )
-
-    def create_plant_data(self):
-        """Create Plant Data section."""
-
-        frame = ttk.LabelFrame(
-            self.main_frame,
-            text="Plant Data",
-            padding=10
-        )
-
-        frame.grid(
-            row=3,
-            column=0,
-            sticky="ew",
-            pady=(0, 12)
-        )
-
-        for column in range(3):
-            frame.columnconfigure(column, weight=1)
-
-        self.add_label(frame, "Plants", 0, 0)
-        self.add_label(frame, "Blossoms", 0, 1)
-        self.add_label(frame, "Fruit", 0, 2)
-
-        self.add_spinbox(
-            frame,
-            "Plants",
-            1,
-            0,
-            minimum=0,
-            maximum=100000,
-            increment=1
-        )
-
-        self.add_spinbox(
-            frame,
-            "Blossoms",
-            1,
-            1,
-            minimum=0,
-            maximum=100000,
-            increment=1
-        )
-
-        self.add_spinbox(
-            frame,
-            "Fruit",
-            1,
-            2,
-            minimum=0,
-            maximum=100000,
-            increment=1
-        )
-
-        self.add_error_label(frame, "Plants", 2, 0)
-        self.add_error_label(frame, "Blossoms", 2, 1)
-        self.add_error_label(frame, "Fruit", 2, 2)
-
-        self.add_label(frame, "Min Height", 3, 0)
-        self.add_label(frame, "Max Height", 3, 1)
-        self.add_label(frame, "Median Height", 3, 2)
-
-        self.add_spinbox(
-            frame,
-            "Min Height",
-            4,
-            0,
-            minimum=0,
-            maximum=1000,
-            increment=0.1
-        )
-
-        self.add_spinbox(
-            frame,
-            "Max Height",
-            4,
-            1,
-            minimum=0,
-            maximum=1000,
-            increment=0.1
-        )
-
-        self.add_spinbox(
-            frame,
-            "Median Height",
-            4,
-            2,
-            minimum=0,
-            maximum=1000,
-            increment=0.1
-        )
-
-        self.add_error_label(frame, "Min Height", 5, 0)
-        self.add_error_label(frame, "Max Height", 5, 1)
-        self.add_error_label(frame, "Median Height", 5, 2)
-
-    def create_notes(self):
-        """Create Notes section."""
-
-        frame = ttk.LabelFrame(
-            self.main_frame,
-            text="Notes",
-            padding=8
-        )
-
-        frame.grid(
-            row=4,
-            column=0,
-            sticky="nsew",
-            pady=(0, 12)
-        )
-
-        self.main_frame.rowconfigure(4, weight=1)
-
-        self.notes_text = tk.Text(
-            frame,
-            height=7,
-            wrap=tk.WORD,
-            background="#FFFFFF",
-            foreground="#4E3B4A",
-            relief=tk.SOLID,
-            borderwidth=1
-        )
-
-        self.notes_text.pack(
-            fill=tk.BOTH,
-            expand=True
-        )
-
-        self.notes_text.insert(
-            "1.0",
-            self.notes_value
-        )
-
-    def create_buttons(self):
-        """Create Save and Cancel buttons."""
-
-        button_frame = ttk.Frame(self.main_frame)
-
-        button_frame.grid(
-            row=5,
-            column=0,
-            sticky="e"
-        )
-
-        cancel_button = ttk.Button(
-            button_frame,
-            text="Cancel",
-            command=self.destroy
-        )
-
-        cancel_button.pack(
-            side=tk.RIGHT
-        )
-
-        save_button = ttk.Button(
-            button_frame,
-            text="Save",
-            command=self.save_record
-        )
-
-        save_button.pack(
-            side=tk.RIGHT,
-            padx=(0, 8)
-        )
-
-    def get_record(self):
-        """Convert form values into a dictionary."""
-
-        record = {}
-
-        for field, variable in self.variables.items():
-            record[field] = variable.get().strip()
-
-        record["Notes"] = self.notes_text.get(
-            "1.0",
-            tk.END
-        ).strip()
-
-        return record
-
-    def clear_errors(self):
-        """Clear all red validation messages."""
-
-        for error_label in self.error_labels.values():
-            error_label.config(text="")
-
-    def show_error(self, field, message):
-        """Show red message under one field."""
-
-        error_label = self.error_labels.get(field)
-
-        if error_label:
-            error_label.config(text=message)
-
-    def validate_record(self, record):
-        """Validate required and numeric fields."""
-
-        self.clear_errors()
-        is_valid = True
-
-        # Required fields
-        for field, error_message in self.required_fields.items():
-            if not record[field]:
-                self.show_error(field, error_message)
-                is_valid = False
-
-        # Check numeric values
-        for field in self.numeric_fields:
-            value = record[field].replace(",", ".")
-
-            if not value:
-                continue
-
-            try:
-                float(value)
-            except ValueError:
-                self.show_error(
-                    field,
-                    "Enter a valid number"
-                )
-                is_valid = False
-
-        # Min Height must be <= Max Height
-        min_height = record["Min Height"].replace(",", ".")
-        max_height = record["Max Height"].replace(",", ".")
-
-        if min_height and max_height:
-            try:
-                if float(min_height) > float(max_height):
-                    self.show_error(
-                        "Min Height",
-                        "Min cannot be greater than Max"
-                    )
-
-                    self.show_error(
-                        "Max Height",
-                        "Max must be greater than Min"
-                    )
-
-                    is_valid = False
-
-            except ValueError:
-                pass
-
-        return is_valid
-
-    def save_record(self):
-        """Validate form, then return data to Application."""
-
-        record = self.get_record()
-
-        if not self.validate_record(record):
-            messagebox.showwarning(
-                "Validation Error",
-                "Please correct the highlighted fields."
-            )
-            return
-
-        self.on_save_callback(
-            record,
-            self.row_number
-        )
-
+        super().__init__(parent, *args, **kwargs)
+        self.fields_schema = fields_schema
+        self.initial_data = initial_data or {}
+        self.rowkey = rowkey
+        self.on_save_cb = on_save
+        self.variables = {}
+
+        self.title("Edit Record 💕" if rowkey else "New Record 💕")
+        self.geometry("470x650")
+        self.minsize(420, 520)
+        self.configure(bg=BG_PINK)
+
+        self._build_ui()
+        if self.initial_data:
+            self.load_record(self.initial_data)
+
+    def _build_ui(self) -> None:
+        main_frame = ttk.Frame(self)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+
+        canvas = tk.Canvas(main_frame, highlightthickness=0, bg=BG_PINK)
+        scrollbar = ttk.Scrollbar(main_frame, orient="vertical", command=canvas.yview)
+        self.scrollable_frame = ttk.Frame(canvas, padding=15)
+
+        self.scrollable_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas_window = canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        canvas.bind("<Configure>", lambda e: canvas.itemconfig(canvas_window, width=e.width))
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        header_text = "Edit Plot Record" if self.rowkey else "New Plot Record"
+        ttk.Label(
+            self.scrollable_frame,
+            text=f"🌸 {header_text} 🌸",
+            font=("Segoe UI", 12, "bold"),
+            foreground=ACCENT_PURPLE,
+        ).pack(anchor="w", pady=(0, 15))
+
+        for field, meta in self.fields_schema.items():
+            row_frame = ttk.Frame(self.scrollable_frame)
+            row_frame.pack(fill=tk.X, pady=3)
+
+            lbl_text = f"{field}:"
+            lbl = ttk.Label(row_frame, text=lbl_text, width=16, anchor="w")
+            lbl.pack(side=tk.LEFT)
+
+            field_type = meta.get("type", "str")
+
+            if "values" in meta:
+                var = tk.StringVar()
+                cb = ttk.Combobox(row_frame, textvariable=var, values=meta["values"], state="readonly")
+                cb.pack(side=tk.RIGHT, fill=tk.X, expand=True)
+                if meta["values"] and not self.initial_data:
+                    cb.set(meta["values"][0])
+                self.variables[field] = var
+            elif field_type == "bool":
+                var = tk.StringVar(value="False")
+                cb = ttk.Combobox(row_frame, textvariable=var, values=["True", "False"], state="readonly")
+                cb.pack(side=tk.RIGHT, fill=tk.X, expand=True)
+                self.variables[field] = var
+            else:
+                var = tk.StringVar()
+                entry = ttk.Entry(row_frame, textvariable=var, state="normal")
+                entry.pack(side=tk.RIGHT, fill=tk.X, expand=True)
+                self.variables[field] = var
+
+        btn_box = ttk.Frame(self.scrollable_frame)
+        btn_box.pack(fill=tk.X, pady=(20, 10))
+
+        save_btn = ttk.Button(btn_box, text="Save Record 💾", command=self._save)
+        save_btn.pack(side=tk.LEFT, expand=True, padx=5, ipady=3)
+
+        cancel_btn = ttk.Button(btn_box, text="Cancel", command=self.destroy)
+        cancel_btn.pack(side=tk.RIGHT, expand=True, padx=5, ipady=3)
+
+    def load_record(self, data: dict[str, Any]) -> None:
+        for k, v in data.items():
+            if k in self.variables:
+                self.variables[k].set("" if v is None else str(v))
+
+    def get_data(self) -> dict[str, Any]:
+        return {k: var.get().strip() for k, var in self.variables.items()}
+
+    def _save(self) -> None:
+        data = self.get_data()
+        for field, meta in self.fields_schema.items():
+            if meta.get("req", False) and not data.get(field):
+                messagebox.showerror("Validation Error", f"Field '{field}' is required!", parent=self)
+                return
+
+        if self.on_save_cb:
+            self.on_save_cb(data, self.rowkey)
         self.destroy()
