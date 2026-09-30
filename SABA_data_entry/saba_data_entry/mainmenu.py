@@ -130,14 +130,14 @@ class GenericMainMenu(tk.Menu):
 
 class WindowsMainMenu(GenericMainMenu):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._keybinds.pop("<Control-q>", None)
+    def __init__(self, parent, settings, callbacks, **kwargs):
+        super().__init__(parent, settings, callbacks, **kwargs)
+        del self._keybinds["<Control-q>"]
 
     def _create_icons(self):
         super()._create_icons()
-        self.icons.pop("new_record", None)
-        self.icons.pop("record_list", None)
+        self.icons["new_record"] = None
+        self.icons["record_list"] = None
 
     def _add_quit(self, menu):
         menu.add_command(
@@ -148,32 +148,35 @@ class WindowsMainMenu(GenericMainMenu):
         )
 
     def _build_menu(self):
-        self._menus["File"] = tk.Menu(self, tearoff=False)
-        self._add_file_open(self._menus["File"])
-        self._menus["File"].add_separator()
-        self._add_quit(self._menus["File"])
+        file_menu = tk.Menu(self, tearoff=False)
+        self._add_file_open(file_menu)
+        file_menu.add_separator()
+        self._add_quit(file_menu)
+        self.add_cascade(label="File", menu=file_menu)
 
-        self._menus["Tools"] = tk.Menu(self, tearoff=False)
-        self._add_autofill_date(self._menus["Tools"])
-        self._add_autofill_sheet(self._menus["Tools"])
-        self._add_font_size_menu(self._menus["Tools"])
-        self._add_font_family_menu(self._menus["Tools"])
-        self._add_themes_menu(self._menus["Tools"])
+        tools_menu = tk.Menu(self, tearoff=False)
+        self._add_autofill_date(tools_menu)
+        self._add_autofill_sheet(tools_menu)
+        tools_menu.add_separator()
+        self._add_font_size_menu(tools_menu)
+        self._add_font_family_menu(tools_menu)
+        self._add_themes_menu(tools_menu)
+        self.add_cascade(label="Tools", menu=tools_menu)
 
-        self._menus["Help"] = tk.Menu(self, tearoff=False)
-        self._add_about(self._menus["Help"])
-
-        self.add_cascade(label="File", menu=self._menus["File"])
         self.add_command(
             label="Record List",
             command=self._event("<<RecordList>>"),
+            accelerator="Ctrl+R",
         )
         self.add_command(
             label="New Record",
             command=self._event("<<NewRecord>>"),
+            accelerator="Ctrl+N",
         )
-        self.add_cascade(label="Tools", menu=self._menus["Tools"])
-        self.add_cascade(label="Help", menu=self._menus["Help"])
+
+        help_menu = tk.Menu(self, tearoff=False)
+        self._add_about(help_menu)
+        self.add_cascade(label="Help", menu=help_menu)
 
 
 class LinuxMainMenu(GenericMainMenu):
@@ -187,38 +190,37 @@ class LinuxMainMenu(GenericMainMenu):
     }
 
     def _build_menu(self):
-        self._menus["File"] = tk.Menu(self, tearoff=False, **self.styles)
-        self._add_file_open(self._menus["File"])
-        self._menus["File"].add_separator()
-        self._add_quit(self._menus["File"])
+        file_menu = tk.Menu(self, tearoff=False, **self.styles)
+        self._add_file_open(file_menu)
+        file_menu.add_separator()
+        self._add_quit(file_menu)
+        self.add_cascade(label="File", menu=file_menu)
 
-        self._menus["Edit"] = tk.Menu(self, tearoff=False, **self.styles)
-        self._add_autofill_date(self._menus["Edit"])
-        self._add_autofill_sheet(self._menus["Edit"])
+        edit_menu = tk.Menu(self, tearoff=False, **self.styles)
+        self._add_autofill_date(edit_menu)
+        self._add_autofill_sheet(edit_menu)
+        self.add_cascade(label="Edit", menu=edit_menu)
 
-        self._menus["Go"] = tk.Menu(self, tearoff=False, **self.styles)
-        self._add_go_record_list(self._menus["Go"])
-        self._add_go_new_record(self._menus["Go"])
+        go_menu = tk.Menu(self, tearoff=False, **self.styles)
+        self._add_go_record_list(go_menu)
+        self._add_go_new_record(go_menu)
+        self.add_cascade(label="Go", menu=go_menu)
 
-        self._menus["View"] = tk.Menu(self, tearoff=False, **self.styles)
-        self._add_font_size_menu(self._menus["View"])
-        self._add_font_family_menu(self._menus["View"])
-        self._add_themes_menu(self._menus["View"])
+        view_menu = tk.Menu(self, tearoff=False, **self.styles)
+        self._add_font_size_menu(view_menu)
+        self._add_font_family_menu(view_menu)
+        self._add_themes_menu(view_menu)
+        self.add_cascade(label="View", menu=view_menu)
 
-        self._menus["Help"] = tk.Menu(self, tearoff=False, **self.styles)
-        self._add_about(self._menus["Help"])
-
-        self.add_cascade(label="File", menu=self._menus["File"])
-        self.add_cascade(label="Edit", menu=self._menus["Edit"])
-        self.add_cascade(label="Go", menu=self._menus["Go"])
-        self.add_cascade(label="View", menu=self._menus["View"])
-        self.add_cascade(label="Help", menu=self._menus["Help"])
+        help_menu = tk.Menu(self, tearoff=False, **self.styles)
+        self._add_about(help_menu)
+        self.add_cascade(label="Help", menu=help_menu)
 
 
 class MacOsMainMenu(GenericMainMenu):
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, parent, settings, callbacks, **kwargs):
+        super().__init__(parent, settings, callbacks, **kwargs)
         self._keybinds = {
             "<Command-o>": self._event("<<FileOpen>>"),
             "<Command-n>": self._event("<<NewRecord>>"),
@@ -237,6 +239,8 @@ class MacOsMainMenu(GenericMainMenu):
             label="Record List",
             command=self._event("<<RecordList>>"),
             accelerator="Cmd+R",
+            image=self.icons.get("record_list"),
+            compound=tk.LEFT,
         )
 
     def _add_go_new_record(self, menu):
@@ -244,32 +248,33 @@ class MacOsMainMenu(GenericMainMenu):
             label="New Record",
             command=self._event("<<NewRecord>>"),
             accelerator="Cmd+N",
+            image=self.icons.get("new_record"),
+            compound=tk.LEFT,
         )
 
     def _build_menu(self):
-        self._menus["File"] = tk.Menu(self, tearoff=False)
-        self._add_file_open(self._menus["File"])
+        file_menu = tk.Menu(self, tearoff=False)
+        self._add_file_open(file_menu)
+        self.add_cascade(label="File", menu=file_menu)
 
-        self._menus["Edit"] = tk.Menu(self, tearoff=False)
-        self._add_autofill_date(self._menus["Edit"])
-        self._add_autofill_sheet(self._menus["Edit"])
+        edit_menu = tk.Menu(self, tearoff=False)
+        self._add_autofill_date(edit_menu)
+        self._add_autofill_sheet(edit_menu)
+        self.add_cascade(label="Edit", menu=edit_menu)
 
-        self._menus["Go"] = tk.Menu(self, tearoff=False)
-        self._add_go_record_list(self._menus["Go"])
-        self._add_go_new_record(self._menus["Go"])
+        go_menu = tk.Menu(self, tearoff=False)
+        self._add_go_record_list(go_menu)
+        self._add_go_new_record(go_menu)
+        self.add_cascade(label="Go", menu=go_menu)
 
-        self._menus["View"] = tk.Menu(self, tearoff=False)
-        self._add_font_size_menu(self._menus["View"])
-        self._add_font_family_menu(self._menus["View"])
+        view_menu = tk.Menu(self, tearoff=False)
+        self._add_font_size_menu(view_menu)
+        self._add_font_family_menu(view_menu)
+        self.add_cascade(label="View", menu=view_menu)
 
-        self._menus["Help"] = tk.Menu(self, tearoff=False)
-        self._add_about(self._menus["Help"])
-
-        self.add_cascade(label="File", menu=self._menus["File"])
-        self.add_cascade(label="Edit", menu=self._menus["Edit"])
-        self.add_cascade(label="Go", menu=self._menus["Go"])
-        self.add_cascade(label="View", menu=self._menus["View"])
-        self.add_cascade(label="Help", menu=self._menus["Help"])
+        help_menu = tk.Menu(self, tearoff=False)
+        self._add_about(help_menu)
+        self.add_cascade(label="Help", menu=help_menu)
 
 
 def get_main_menu_for_os(os_name):
